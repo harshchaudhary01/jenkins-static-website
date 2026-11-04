@@ -48,17 +48,18 @@ pipeline {
                     )
                 ]) {
                     bat '''
-                        @echo off
-                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                @echo off
 
-                        if errorlevel 1 exit /b 1
+                powershell.exe -NoProfile -NonInteractive -Command "$env:DOCKER_PASS | docker login --username $env:DOCKER_USER --password-stdin; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
 
-                        docker push %DOCKER_IMAGE%:latest
+                if errorlevel 1 exit /b 1
 
-                        if errorlevel 1 exit /b 1
+                docker push %DOCKER_IMAGE%:latest
 
-                        docker logout
-                    '''
+                if errorlevel 1 exit /b 1
+
+                docker logout
+            '''
                 }
             }
         }
