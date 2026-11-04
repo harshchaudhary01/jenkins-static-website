@@ -19,13 +19,13 @@ pipeline {
             steps {
                 echo 'Checking website files'
 
-                sh '''
-                    test -f index.html
-                    test -f style.css
-                    test -f script.js
-                    test -f Dockerfile
+                bat '''
+                    if not exist index.html exit /b 1
+                    if not exist style.css exit /b 1
+                    if not exist script.js exit /b 1
+                    if not exist Dockerfile exit /b 1
 
-                    echo "All files verified successfully"
+                    echo All files verified successfully
                 '''
             }
         }
@@ -34,9 +34,7 @@ pipeline {
             steps {
                 echo 'Building Docker image'
 
-                sh '''
-                    docker build -t ${DOCKER_IMAGE}:latest .
-                '''
+                bat 'docker build -t %DOCKER_IMAGE%:latest .'
             }
         }
 
@@ -49,11 +47,15 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login \
-                        -u "$DOCKER_USER" --password-stdin
+                    bat '''
+                        @echo off
+                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
 
-                        docker push ${DOCKER_IMAGE}:latest
+                        if errorlevel 1 exit /b 1
+
+                        docker push %DOCKER_IMAGE%:latest
+
+                        if errorlevel 1 exit /b 1
 
                         docker logout
                     '''
@@ -63,15 +65,18 @@ pipeline {
 
         stage('Deploy Website') {
             steps {
-                sh '''
-                    docker pull ${DOCKER_IMAGE}:latest
+                echo 'Deploying website using Docker'
 
-                    docker rm -f my-website || true
+                bat '''
+                    docker pull %DOCKER_IMAGE%:latest
 
-                    docker run -d \
-                    --name my-website \
-                    -p 8081:80 \
-                    ${DOCKER_IMAGE}:latest
+                    if errorlevel 1 exit /b 1
+
+                    docker rm -f my-website 2>NUL
+
+                    docker run -d --name my-website -p 8081:80 %DOCKER_IMAGE%:latest
+
+                    if errorlevel 1 exit /b 1
                 '''
             }
         }
